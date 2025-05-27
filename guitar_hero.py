@@ -775,18 +775,26 @@ class GuitarHeroMinigame:
             try:
                 # Try to load the instrument-specific collection image
                 collection_image = pygame.image.load(collection_image_path)
-                # Scale image to fit the screen while maintaining aspect ratio
-                img_width, img_height = collection_image.get_size()
-                scale_factor = min(width / img_width, height / img_height)
-                new_width = int(img_width * scale_factor)
-                new_height = int(img_height * scale_factor)
                 
-                # Scale and center the image
+                # MODIFICADO: Redimensionar a imagem para preencher toda a tela
+                # em vez de manter a proporção da imagem original
+                new_width = width
+                new_height = height
+                
+                # Scale to fill the entire screen
                 collection_image = pygame.transform.smoothscale(collection_image, (new_width, new_height))
-                image_rect = collection_image.get_rect(center=(width//2, height//2))
-                surface.blit(collection_image, image_rect)
+                
+                # Position at (0,0) to cover the entire screen instead of centering
+                surface.blit(collection_image, (0, 0))
                 
                 # Add "Press SPACE to continue" text at the bottom
+                # MODIFICADO: Melhorar a visibilidade do texto com fundo e sombra
+                # Sombra do texto
+                shadow_text = self.font.render("Pressione ESPAÇO para continuar", True, (0, 0, 0))
+                shadow_rect = shadow_text.get_rect(center=(width//2 + 2, height - 28))
+                surface.blit(shadow_text, shadow_rect)
+                
+                # Texto principal
                 continue_text = self.font.render("Pressione ESPAÇO para continuar", True, (255, 255, 255))
                 continue_rect = continue_text.get_rect(center=(width//2, height - 30))
                 surface.blit(continue_text, continue_rect)
