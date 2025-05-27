@@ -18,6 +18,7 @@ SOUND_MANDOLINE = 'mandoline'
 SOUND_VUVUZELA = 'vuvuzela'
 SOUND_CRUMHORN = 'crumhorn'
 SOUND_DIGERIDOO = 'digeridoo'
+SOUND_FAIL = 'fail'
 
 SOUND_FILES = {
     SOUND_AMBIENT: 'Sounds/ambient.mp3',
@@ -38,6 +39,7 @@ SOUND_FILES = {
     SOUND_VUVUZELA: 'Sounds/vuvuzela.mp3',
     SOUND_CRUMHORN: 'Sounds/Crumhorn.mp3',
     SOUND_DIGERIDOO: 'Sounds/Didgeridoo.mp3',
+    SOUND_FAIL: 'Sounds/fail.mp3',
 }
 
 class Sound:

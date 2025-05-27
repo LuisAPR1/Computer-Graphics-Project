@@ -34,10 +34,10 @@ DIFFICULTY_KEYS = {
 # Configurações de dificuldade
 DIFFICULTY_SETTINGS = {
     # [velocidade, intervalo_spawn, notas_simultaneas, acertos_necessários, max_erros, chance_sequencia, max_notas_sequencia]
-    0: [4, 1.3, 1, 0, 10, 0.1, 2],    # Fácil 
-    1: [5, 1.1, 2, 0, 8, 0.2, 2],   # Médio 
-    2: [6, 0.9, 3, 0, 7, 0.3, 3],   # Difícil 
-    3: [6, 0.9, 3, 0, 8, 0.3, 3]    # Muito Difícil 
+    0: [4, 1.3, 1, 10, 10, 0.1, 2],    # Fácil 
+    1: [5, 1.1, 2, 15, 8, 0.2, 2],   # Médio 
+    2: [6, 0.9, 3, 25, 7, 0.3, 3],   # Difícil 
+    3: [6, 0.9, 3, 35, 8, 0.3, 3]    # Muito Difícil 
 }
 
 #    # [velocidade, intervalo_spawn, notas_simultaneas, acertos_necessários, max_erros, chance_sequencia, max_notas_sequencia]
@@ -248,7 +248,7 @@ class GuitarHeroMinigame:
         self.font = pygame.font.SysFont("Arial", 24)
         self.title_font = pygame.font.SysFont("Arial", 36, bold=True)
         self.start_time = time.time()
-        self.duration = 0.1
+        self.duration = 20
         self.completed = False
         self.success = False
         self.bg_gradient = self.create_bg_gradient()

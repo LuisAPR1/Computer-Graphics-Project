@@ -9,7 +9,7 @@ from cShader import Shader
 from lava import Lava
 from cTerrain import TERRAIN_SIZE
 from cModel import Model
-from cSound import Sound, SOUND_PICKUP, SOUND_CHILLJAZZ, SOUND_PAUSEMENU, SOUND_BOUNCE, SOUND_LAVASOUND, SOUND_LOSESONG, SOUND_WALK, SOUND_MANDOLINE, SOUND_VUVUZELA, SOUND_CRUMHORN, SOUND_DIGERIDOO
+from cSound import Sound, SOUND_PICKUP, SOUND_CHILLJAZZ, SOUND_PAUSEMENU, SOUND_BOUNCE, SOUND_LAVASOUND, SOUND_LOSESONG, SOUND_WALK, SOUND_MANDOLINE, SOUND_VUVUZELA, SOUND_CRUMHORN, SOUND_DIGERIDOO, SOUND_FAIL
 import sys
 import os
 import numpy as np
@@ -23,8 +23,8 @@ GRAVITY = 0.05
 PLAYER_SPEED = 0.5
 JUMP_SPEED = 1
 RADIUS = 1.0
-COLLECTION_RADIUS = 11116.0  # MODIFIED: Increased collection radius
-MAX_CLIMB_SLOPE = 2.0  # Tangente do ângulo máximo de subida (e.g., 1.0 para 45 graus)
+COLLECTION_RADIUS = 6.0  # MODIFIED: Increased collection radius
+MAX_CLIMB_SLOPE = 1000.0  # Tangente do ângulo máximo de subida (e.g., 1.0 para 45 graus)
 
 GAME_SETTINGS = {
     "SCREEN_WIDTH": SCREEN_WIDTH,
@@ -631,6 +631,8 @@ class Game:
         # Note: instrument's animated_pos and animated_scale will be stored in the instrument's dict directly
         # End Cutscene Attributes
 
+        # Track if fail sound has been played
+        self.fail_sound_played = False
 
         # Define difficulties for each instrument
         self.INSTRUMENT_DIFFICULTIES = {
@@ -1862,6 +1864,11 @@ class Game:
                 if self.guitar_hero_minigame.success:
                     self.guitar_hero_minigame.draw_results(temp_surface)
                 else:
+                    # Play fail sound if not already played
+                    if not self.fail_sound_played:
+                        self.Sound.play(SOUND_FAIL)
+                        self.fail_sound_played = True
+                    
                     # Load and display the fail image when player fails
                     try:
                         fail_img = pygame.image.load('Images/fail.png')
@@ -2139,12 +2146,23 @@ class Game:
         
         # Desenhar os raios de luz para instrumentos não coletados e não voando
         glDisable(GL_LIGHTING)  # Disable lighting for the beams (they provide their own colors)
+        
+        # Find the next instrument to collect (first uncollected one)
+        next_instrument_to_collect = None
+        for inst in self.instruments:
+            if not inst["collected"] and not inst.get("flying", False):
+                next_instrument_to_collect = inst
+                break
+        
+        # Only draw beam for the next instrument to collect
+        if next_instrument_to_collect:
+            x, y, z = next_instrument_to_collect["pos"]
+            r, g, b = next_instrument_to_collect["color"]
+            self.draw_light_beam(x, y, z, r, g, b)
+            
+        # Still draw beams for flying instruments (currently being collected)
         for instrument in self.instruments:
-            if not instrument["collected"] and not instrument.get("flying", False):
-                x, y, z = instrument["pos"]
-                r, g, b = instrument["color"]
-                self.draw_light_beam(x, y, z, r, g, b)
-            elif instrument.get("flying", False):
+            if instrument.get("flying", False):
                 # Draw a special beam effect for flying instruments
                 x, y, z = instrument["pos"]
                 r, g, b = instrument["color"]
@@ -2738,6 +2756,9 @@ class Game:
         """Start the Guitar Hero minigame directly for an instrument"""
         # Save reference to the instrument for later
         self.current_minigame_instrument = instrument
+        
+        # Reset fail sound flag
+        self.fail_sound_played = False
         
         # Create and configure the minigame
         self.guitar_hero_minigame = GuitarHeroMinigame(instrument["id"])
