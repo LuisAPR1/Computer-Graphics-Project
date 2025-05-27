@@ -2391,8 +2391,8 @@ class Game:
         # Find ground height at instrument position
         ground_y = self.Terrain.get_height_bicubic(x, z)
         
-        # Calculate light direction from sun position
-        sun_x, sun_y, sun_z = 500.0, 800.0, -500.0  # Same as in render()
+        # Calculate light direction from sun position - EXACT SAME sun position as in render()
+        sun_x, sun_y, sun_z = 500.0, 800.0, -500.0
         
         # Vector from instrument to light source
         light_dir_x = sun_x - x
@@ -2407,7 +2407,7 @@ class Game:
             light_dir_z /= length
         
         # Calculate offset for shadow (prevents z-fighting)
-        shadow_y_offset = 0.01
+        shadow_y_offset = 0.02
         
         # Set up shadow rendering state
         glEnable(GL_BLEND)
@@ -2415,52 +2415,60 @@ class Game:
         glDisable(GL_LIGHTING)
         glDisable(GL_TEXTURE_2D)
         
-        # Calculate shadow alpha based on sun height
-        # Higher sun = darker shadow
-        shadow_alpha = max(0.3, min(0.7, 0.7 - light_dir_y * 0.4))
+        # Calculate shadow alpha based on sun height - make shadows darker and more defined
+        shadow_alpha = max(0.5, min(0.8, 0.8 - light_dir_y * 0.3))
         
-        # Handle case when light is almost horizontal (to prevent extreme projections)
-        if abs(light_dir_y) < 0.1:
-            # Fall back to a simple scaled disc shadow when the sun is near the horizon
-            glPushMatrix()
-            glTranslatef(x, ground_y + shadow_y_offset, z)
-            glColor4f(0.0, 0.0, 0.0, shadow_alpha)
-            
-            # Draw a simple disc shadow as fallback
-            glBegin(GL_TRIANGLE_FAN)
-            glVertex3f(0, 0, 0)  # center
-            
-            segments = 32
-            shadow_radius = 1.5 * scale_factor
-            for i in range(segments + 1):
-                angle = 2.0 * math.pi * i / segments
-                x_pos = math.cos(angle) * shadow_radius
-                z_pos = math.sin(angle) * shadow_radius
-                glVertex3f(x_pos, 0, z_pos)
-            glEnd()
-            glPopMatrix()
-        else:
-            # Calculate shadow projection point
-            # This is where the light ray from the instrument intersects the ground
-            # Ground is at y = ground_y, light ray starts at (x,y,z) and goes in direction (-light_dir_x, -light_dir_y, -light_dir_z)
-            # Parameter t for ray: point = (x,y,z) + t * (-light_dir_x, -light_dir_y, -light_dir_z)
-            # When y component = ground_y: y + t * (-light_dir_y) = ground_y
-            # Solve for t: t = (y - ground_y) / light_dir_y
+        # We want to always project onto the ground exactly, so never use the disc fallback
+        # This code ensures precise projection geometry that exactly matches the sun's angle
+        
+        # Calculate shadow projection matrix
+        # This is where the light ray from the instrument intersects the ground
+        if light_dir_y != 0:  # Safeguard against division by zero
+            # Calculate intersection parameter
             t = (y - ground_y) / light_dir_y
             
+            # Project onto ground plane
             shadow_x = x - t * light_dir_x
             shadow_z = z - t * light_dir_z
             
-            # Create a matrix transform that will flatten the object
+            # Create shadow projection matrix
+            # This matrix will transform the object to create a planar projection shadow
+            # Formula derived from projecting along light direction onto XZ plane
+            matrix = [
+                1.0 - (light_dir_x * light_dir_x / light_dir_y), 
+                0.0 - (light_dir_x * 1.0 / light_dir_y), 
+                0.0 - (light_dir_x * light_dir_z / light_dir_y), 
+                0.0,
+                
+                0.0, 
+                0.0, 
+                0.0, 
+                0.0,
+                
+                0.0 - (light_dir_z * light_dir_x / light_dir_y), 
+                0.0 - (light_dir_z * 1.0 / light_dir_y), 
+                1.0 - (light_dir_z * light_dir_z / light_dir_y), 
+                0.0,
+                
+                0.0, 
+                0.0, 
+                0.0, 
+                1.0
+            ]
+            
             glPushMatrix()
+            # Position at the ground position under the instrument
+            glTranslatef(x, ground_y + shadow_y_offset, z)
+            # Apply the shadow projection matrix
+            glMultMatrixf(matrix)
+            # Move back to the instrument's position
+            glTranslatef(-x, -y, -z)
+            # Position at original instrument position
+            glTranslatef(x, y, z)
+            # Scale to adjust shadow size as needed
+            glScalef(scale_factor, scale_factor, scale_factor)
             
-            # Position at the shadow projection point
-            glTranslatef(shadow_x, ground_y + shadow_y_offset, shadow_z)
-            
-            # Flatten the object along the Y-axis and scale it
-            glScalef(scale_factor, 0.01, scale_factor)
-            
-            # Render the shadow in black with transparency
+            # Render shadow with correct alpha
             glColor4f(0.0, 0.0, 0.0, shadow_alpha)
             
             # Draw the instrument model as shadow
