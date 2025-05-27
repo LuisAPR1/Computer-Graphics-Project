@@ -759,8 +759,7 @@ class GuitarHeroMinigame:
         # Instruções
         instructions = self.font.render("Pressione as teclas 1-4 quando as notas chegarem na zona de acerto", True, (200, 200, 200))
         surface.blit(instructions, (width//2 - instructions.get_width()//2, height - 60))
-        difficulty_instructions = self.font.render("Pressione 7 (Fácil), 8 (Médio), 9 (Difícil) ou 0 (Muito Difícil)", True, (200, 200, 200))
-        surface.blit(difficulty_instructions, (width//2 - difficulty_instructions.get_width()//2, height - 30))
+
     
     def draw_results(self, surface):
         width, height = surface.get_size()

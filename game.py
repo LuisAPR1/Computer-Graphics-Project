@@ -25,6 +25,7 @@ JUMP_SPEED = 1
 RADIUS = 1.0
 COLLECTION_RADIUS = 6.0  # MODIFIED: Increased collection radius
 MAX_CLIMB_SLOPE = 1000.0  # Tangente do ângulo máximo de subida (e.g., 1.0 para 45 graus)
+MOUSE_SENSITIVITY = 0.2  # Default mouse sensitivity value
 
 GAME_SETTINGS = {
     "SCREEN_WIDTH": SCREEN_WIDTH,
@@ -35,7 +36,8 @@ GAME_SETTINGS = {
     "JUMP_SPEED": JUMP_SPEED,
     "RADIUS": RADIUS,
     "COLLECTION_RADIUS": COLLECTION_RADIUS,
-    "MAX_CLIMB_SLOPE": MAX_CLIMB_SLOPE
+    "MAX_CLIMB_SLOPE": MAX_CLIMB_SLOPE,
+    "MOUSE_SENSITIVITY": MOUSE_SENSITIVITY
 }
 
 # Helper functions for animations
@@ -56,7 +58,7 @@ def ease_in_out_smooth(t): # Smooth step (cubic)
 
 # Function to update global variables from GAME_SETTINGS
 def update_global_settings():
-    global SCREEN_WIDTH, SCREEN_HEIGHT, FRAMERATE, GRAVITY, PLAYER_SPEED, JUMP_SPEED, RADIUS, COLLECTION_RADIUS, MAX_CLIMB_SLOPE
+    global SCREEN_WIDTH, SCREEN_HEIGHT, FRAMERATE, GRAVITY, PLAYER_SPEED, JUMP_SPEED, RADIUS, COLLECTION_RADIUS, MAX_CLIMB_SLOPE, MOUSE_SENSITIVITY
     SCREEN_WIDTH = GAME_SETTINGS["SCREEN_WIDTH"]
     SCREEN_HEIGHT = GAME_SETTINGS["SCREEN_HEIGHT"]
     FRAMERATE = GAME_SETTINGS["FRAMERATE"]
@@ -66,6 +68,7 @@ def update_global_settings():
     RADIUS = GAME_SETTINGS["RADIUS"]
     COLLECTION_RADIUS = GAME_SETTINGS["COLLECTION_RADIUS"]
     MAX_CLIMB_SLOPE = GAME_SETTINGS["MAX_CLIMB_SLOPE"]
+    MOUSE_SENSITIVITY = GAME_SETTINGS["MOUSE_SENSITIVITY"]
 
 class Player:
     def __init__(self, terrain):
@@ -241,11 +244,12 @@ class OptionsMenu:
         self.time = 0
         
         # Apenas manter as configurações de tamanho de tela e FPS
-        self.settings_items = ["SCREEN_WIDTH", "SCREEN_HEIGHT", "FRAMERATE"]
+        self.settings_items = ["SCREEN_WIDTH", "SCREEN_HEIGHT", "FRAMERATE", "MOUSE_SENSITIVITY"]
         self.current_values = {
             "SCREEN_WIDTH": GAME_SETTINGS["SCREEN_WIDTH"],
             "SCREEN_HEIGHT": GAME_SETTINGS["SCREEN_HEIGHT"],
-            "FRAMERATE": GAME_SETTINGS["FRAMERATE"]
+            "FRAMERATE": GAME_SETTINGS["FRAMERATE"],
+            "MOUSE_SENSITIVITY": GAME_SETTINGS["MOUSE_SENSITIVITY"]
         }
 
         # For text input
@@ -362,7 +366,8 @@ class OptionsMenu:
                 option_labels = {
                     "SCREEN_WIDTH": "Largura da Tela",
                     "SCREEN_HEIGHT": "Altura da Tela",
-                    "FRAMERATE": "Taxa de Quadros (FPS)"
+                    "FRAMERATE": "Taxa de Quadros (FPS)",
+                    "MOUSE_SENSITIVITY": "Sensibilidade do Mouse"
                 }
                 
                 name_text_surf = self.font_options.render(f"{option_labels[key]}: ", True, self.unselected_color)
@@ -418,6 +423,8 @@ class OptionsMenu:
         # Definir os passos para cada tipo de configuração
         if key == "FRAMERATE":
             step = 5  # Ajuste de 5 em 5 para o framerate
+        elif key == "MOUSE_SENSITIVITY":
+            step = 0.05  # Passo pequeno para a sensibilidade do mouse
         else:  # SCREEN_WIDTH ou SCREEN_HEIGHT
             step = 50  # Ajuste de 50 em 50 para dimensões da tela
             
@@ -432,6 +439,8 @@ class OptionsMenu:
             self.current_values[key] = max(400, self.current_values[key])  # Mínimo de 400 pixels
         if key == "FRAMERATE":
             self.current_values[key] = max(30, self.current_values[key])  # Mínimo de 30 FPS
+        if key == "MOUSE_SENSITIVITY":
+            self.current_values[key] = max(0.05, min(1.0, self.current_values[key]))  # Entre 0.05 e 1.0
             
         # Aplicar configurações imediatamente
         self.save_settings()
@@ -484,7 +493,8 @@ class OptionsMenu:
         option_labels = {
             "SCREEN_WIDTH": "Largura da Tela",
             "SCREEN_HEIGHT": "Altura da Tela",
-            "FRAMERATE": "Taxa de Quadros (FPS)"
+            "FRAMERATE": "Taxa de Quadros (FPS)",
+            "MOUSE_SENSITIVITY": "Sensibilidade do Mouse"
         }
         
         # Resetar o dicionário de retângulos dos botões
@@ -636,9 +646,9 @@ class Game:
 
         # Define difficulties for each instrument
         self.INSTRUMENT_DIFFICULTIES = {
-            "MODEL_MANDOLINE": 0,  # Easy
+            "MODEL_CRUMHORN": 0,  # Easy (was Hard)
             "MODEL_VUVUZELA": 1,   # Medium
-            "MODEL_CRUMHORN": 2,   # Hard
+            "MODEL_MANDOLINE": 2,   # Hard (was Easy)
             "MODEL_DIGERIDOO": 3    # Very Hard
         }
         self.instrument_icons = {} # To store loaded instrument icons
@@ -1069,7 +1079,7 @@ class Game:
                         mouse_clicked = True # General click, not used by player movement
                     elif event.type == MOUSEMOTION and not self.paused and not self.in_minigame and not self.game_over: # Guarded
                         rel_x, rel_y = event.rel
-                        sensitivity = 0.2
+                        sensitivity = MOUSE_SENSITIVITY  # Use global sensitivity setting
                         self.yaw += rel_x * sensitivity
                         self.pitch -= rel_y * sensitivity
                         self.pitch = max(-89.0, min(45.0, self.pitch))  # Limit upward view to 45 degrees
@@ -1864,8 +1874,11 @@ class Game:
                 if self.guitar_hero_minigame.success:
                     self.guitar_hero_minigame.draw_results(temp_surface)
                 else:
-                    # Play fail sound if not already played
+                    # Make sure instrument sound is stopped immediately at failure
                     if not self.fail_sound_played:
+                        # Stop the instrument sound first
+                        self.stop_instrument_sound()
+                        # Then play the fail sound
                         self.Sound.play(SOUND_FAIL)
                         self.fail_sound_played = True
                     
@@ -2147,14 +2160,19 @@ class Game:
         # Desenhar os raios de luz para instrumentos não coletados e não voando
         glDisable(GL_LIGHTING)  # Disable lighting for the beams (they provide their own colors)
         
-        # Find the next instrument to collect (first uncollected one)
+        # Find the next instrument to collect (uncollected one with the lowest difficulty)
         next_instrument_to_collect = None
+        lowest_difficulty = float('inf')
+        
         for inst in self.instruments:
             if not inst["collected"] and not inst.get("flying", False):
-                next_instrument_to_collect = inst
-                break
+                # Check difficulty level of this instrument
+                inst_difficulty = self.INSTRUMENT_DIFFICULTIES.get(inst["id"], 999)  # Default high value if not found
+                if inst_difficulty < lowest_difficulty:
+                    lowest_difficulty = inst_difficulty
+                    next_instrument_to_collect = inst
         
-        # Only draw beam for the next instrument to collect
+        # Only draw beam for the next instrument to collect (easiest one)
         if next_instrument_to_collect:
             x, y, z = next_instrument_to_collect["pos"]
             r, g, b = next_instrument_to_collect["color"]
