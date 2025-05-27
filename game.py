@@ -648,8 +648,8 @@ class Game:
         self.INSTRUMENT_DIFFICULTIES = {
             "MODEL_CRUMHORN": 0,  # Easy (was Hard)
             "MODEL_VUVUZELA": 1,   # Medium
-            "MODEL_MANDOLINE": 2,   # Hard (was Easy)
-            "MODEL_DIGERIDOO": 3    # Very Hard
+            "MODEL_DIGERIDOO": 2,   # Hard (was Very Hard)
+            "MODEL_MANDOLINE": 3    # Very Hard (was Hard)
         }
         self.instrument_icons = {} # To store loaded instrument icons
 
@@ -1066,12 +1066,13 @@ class Game:
                                     pygame.mouse.set_visible(True)
                                     pygame.event.set_grab(False)
                                     self.pause_menu_selected = 0  # Reset para "Resume"
+                                    # Play pause menu sound in a loop
                                     self.Sound.play(SOUND_PAUSEMENU)
                                 else:
                                     # Despausar o jogo
                                     pygame.mouse.set_visible(False)
                                     pygame.event.set_grab(True)
-                                self.Sound.stop_pause_menu_music()
+                                    self.Sound.stop_pause_menu_music()
                         elif event.key == K_e:
                             self.collect_instruments()
                         # No pause menu key navigation here, it's handled when self.paused is true
