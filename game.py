@@ -1855,7 +1855,25 @@ class Game:
             
             # Desenhar o minigame ou a tela de resultados
             if self.guitar_hero_minigame.completed:
-                self.guitar_hero_minigame.draw_results(temp_surface)
+                if self.guitar_hero_minigame.success:
+                    self.guitar_hero_minigame.draw_results(temp_surface)
+                else:
+                    # Load and display the fail image when player fails
+                    try:
+                        fail_img = pygame.image.load('Images/fail.png')
+                        # Stretch to fill entire screen
+                        fail_img = pygame.transform.scale(fail_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+                        temp_surface.blit(fail_img, (0, 0))
+                        
+                        # Add instruction text at bottom of screen
+                        instruction_font = pygame.font.Font(None, 36)
+                        instruction_text = instruction_font.render("Press ESC or SPACE to continue", True, (255, 255, 255))
+                        instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))
+                        temp_surface.blit(instruction_text, instruction_rect)
+                    except pygame.error as e:
+                        print(f"Error loading fail.png: {e}")
+                        # Fallback to original results display if image can't be loaded
+                        self.guitar_hero_minigame.draw_results(temp_surface)
             else:
                 self.guitar_hero_minigame.draw(temp_surface)
             
