@@ -22,7 +22,12 @@ void main(void)
     vec3 N = normalize(lightVec);
     float diffuse = max(dot(N, vec3(0.0, 0.0, 1.0)), 0.0);
 
-    vec3 finalColor = baseColor * diffuse;
+    // Adicionar luz ambiente forte e reduzir a contribuição da luz difusa
+    float ambient = 0.7;
+    float diffuseContribution = 0.3;
+    
+    // Combinação de luz ambiente e difusa
+    vec3 finalColor = baseColor * (ambient + diffuse * diffuseContribution);
 
     gl_FragColor = vec4(finalColor, 1.0);
 }

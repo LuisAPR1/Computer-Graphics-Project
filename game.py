@@ -11,6 +11,7 @@ from cTerrain import TERRAIN_SIZE
 from cModel import Model
 from cSound import Sound, SOUND_PICKUP, SOUND_CHILLJAZZ, SOUND_PAUSEMENU, SOUND_BOUNCE, SOUND_LAVASOUND, SOUND_LOSESONG, SOUND_WALK, SOUND_MANDOLINE, SOUND_VUVUZELA, SOUND_CRUMHORN, SOUND_DIGERIDOO
 import sys
+import os
 import numpy as np
 from guitar_hero import GuitarHeroMinigame
 import time
@@ -946,7 +947,7 @@ class Game:
                         self.running = False
                         return 'quit'
                     elif event.type == KEYDOWN:
-                        if event.key == pygame.K_ESCAPE and time.time() - self.game_over_message_start_time > 1.0: # Allow quicker exit
+                        if event.key == pygame.K_ESCAPE: # Allow exit at any time with ESC
                             # Parar a música de game over antes de voltar ao menu
                             self.Sound.stop_lose_song()
                             return 'menu'
@@ -1140,8 +1141,10 @@ class Game:
                         self.lava_contact_time = 0.0
             # --- End of Update Logic ---
 
-            if self.game_over and self.show_game_over_message and time.time() - self.game_over_message_start_time > 3.0:
-                # After 3 seconds, automatically return to menu
+            # Verifique se é hora de voltar ao menu após a tela de game over
+            if self.game_over and self.show_game_over_message and time.time() - self.game_over_message_start_time > 10.0:
+                print("Tempo de exibição da tela Game Over atingido, voltando ao menu")
+                # After 10 seconds, automatically return to menu
                 # Parar a música de game over antes de voltar ao menu
                 self.Sound.stop_lose_song()
                 return 'menu'
@@ -1844,6 +1847,7 @@ class Game:
     def render(self):
         # Se estiver na tela GG, renderizar apenas ela
         if self.in_gg_screen:
+            print("Renderizando tela GG (tela de conclusão do jogo)")
             self.render_gg_screen()
             return
             
@@ -2280,34 +2284,8 @@ class Game:
 
         # Render "You Lost" message if game is over
         if self.game_over and self.show_game_over_message:
-            try:
-                game_over_font = pygame.font.SysFont('arial', 100, bold=True)
-            except:
-                game_over_font = pygame.font.Font(None, 120)
-            
-            lost_text_surf = game_over_font.render("You Lost!", True, (255, 50, 50))
-            lost_text_rect = lost_text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            
-            # Simple black outline for better visibility
-            outline_color = (0,0,0)
-            positions = [(-2, -2), (2, -2), (-2, 2), (2, 2), (-2,0), (2,0), (0,-2), (0,2)]
-            for pos_off in positions:
-                outline_surf = game_over_font.render("You Lost!", True, outline_color)
-                outline_rect = outline_surf.get_rect(center=(lost_text_rect.centerx + pos_off[0], lost_text_rect.centery + pos_off[1]))
-                pygame_surface.blit(outline_surf, outline_rect)
-
-            pygame_surface.blit(lost_text_surf, lost_text_rect)
-
-            # Optional: Hint to press ESC or wait
-            hint_font = self.font # Reuse existing font
-            hint_text_content = "Returning to menu..."
-            if time.time() - self.game_over_message_start_time < 3.0: # If still within the 3s window for ESC
-                 hint_text_content = "Press ESC or wait to return to menu"
-
-            hint_text = hint_font.render(hint_text_content, True, (200, 200, 200))
-            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
-            pygame_surface.blit(hint_text, hint_rect)
-
+            print("Renderizando tela de Game Over (jogador perdeu)")
+            self.render_game_over_screen(pygame_surface)
         
         # Render pause menu if game is paused
         if self.paused:
@@ -2613,56 +2591,100 @@ class Game:
         # Criar uma superfície temporária para desenhar a tela GG
         temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         
-        # Preencher o fundo com gradiente roxo-escuro para preto
-        for y in range(SCREEN_HEIGHT):
-            # Calcular cor do gradiente - mais roxo no topo, mais escuro embaixo
-            factor = 1.0 - (y / SCREEN_HEIGHT)
-            r = int(80 * factor)
-            g = int(0 * factor)
-            b = int(100 * factor)
-            pygame.draw.line(temp_surface, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-            
-        # Calcular tempo desde que a tela GG foi ativada
-        elapsed_time = time.time() - self.gg_screen_start_time
-        
-        # Fonte para o texto GG
         try:
-            gg_font = pygame.font.SysFont("Arial Black", 200, bold=True)
-        except:
-            gg_font = pygame.font.Font(None, 240)
+            # Tentar carregar e exibir a imagem gg.png
+            print("Tentando carregar gg.png para a tela GG")
+            # Tentar caminho absoluto e relativo
+            img_path = os.path.join(os.getcwd(), 'Images', 'gg.png')
+            print(f"Tentando caminho absoluto: {img_path}")
             
-        # Renderizar "FIM!" com efeito pulsante
-        pulse_factor = 1.0 + 0.2 * math.sin(elapsed_time * 3.0)
-        
-        # Texto principal
-        gg_text = gg_font.render("FIM!", True, (255, 100, 255))
-        gg_text = pygame.transform.scale(gg_text, 
-                                         (int(gg_text.get_width() * pulse_factor), 
-                                          int(gg_text.get_height() * pulse_factor)))
-        gg_rect = gg_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
-        
-        # Sombra do texto
-        shadow_offset = 10
-        shadow_text = gg_font.render("FIM!", True, (40, 0, 40))
-        shadow_text = pygame.transform.scale(shadow_text, 
-                                            (int(shadow_text.get_width() * pulse_factor), 
-                                             int(shadow_text.get_height() * pulse_factor)))
-        shadow_rect = shadow_text.get_rect(center=(SCREEN_WIDTH//2 + shadow_offset, 
-                                                  SCREEN_HEIGHT//2 - 50 + shadow_offset))
-        
-        # Desenhar primeiro a sombra, depois o texto principal
-        temp_surface.blit(shadow_text, shadow_rect)
-        temp_surface.blit(gg_text, gg_rect)
-        
-        # Subtexto
-        try:
-            subtitle_font = pygame.font.SysFont("Arial", 40)
-        except:
-            subtitle_font = pygame.font.Font(None, 50)
+            if os.path.exists(img_path):
+                gg_img = pygame.image.load(img_path)
+            else:
+                print("Caminho absoluto não encontrado, tentando caminho relativo")
+                gg_img = pygame.image.load('Images/gg.png')
+                
+            # Redimensionar para preencher toda a tela
+            gg_img = pygame.transform.scale(gg_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            temp_surface.blit(gg_img, (0, 0))
+            print("gg.png carregado com sucesso na tela GG")
             
-        subtitle_text = subtitle_font.render("Você completou o jogo! Pressione ESC para sair", True, (200, 200, 200))
-        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 150))
-        temp_surface.blit(subtitle_text, subtitle_rect)
+            # Calcular tempo desde que a tela GG foi ativada
+            elapsed_time = time.time() - self.gg_screen_start_time
+            remaining_time = max(0, 10 - elapsed_time)
+            
+            # Adicionar texto de instrução na parte inferior da tela
+            try:
+                instruction_font = pygame.font.SysFont("Arial", 40)
+            except:
+                instruction_font = pygame.font.Font(None, 50)
+            
+            if remaining_time > 0:
+                instruction_text = instruction_font.render(
+                    f"Voltando ao menu em {int(remaining_time)} segundos... (ESC para sair)", 
+                    True, (255, 255, 255)
+                )
+            else:
+                instruction_text = instruction_font.render("Voltando ao menu...", True, (255, 255, 255))
+                
+            instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))
+            temp_surface.blit(instruction_text, instruction_rect)
+            
+        except pygame.error as e:
+            print(f"ERRO AO CARREGAR gg.png na tela GG: {e}")
+            print(f"Caminho atual: {os.getcwd()}")
+            # Fallback para o método original caso a imagem não seja encontrada
+            
+            # Preencher o fundo com gradiente roxo-escuro para preto
+            for y in range(SCREEN_HEIGHT):
+                # Calcular cor do gradiente - mais roxo no topo, mais escuro embaixo
+                factor = 1.0 - (y / SCREEN_HEIGHT)
+                r = int(80 * factor)
+                g = int(0 * factor)
+                b = int(100 * factor)
+                pygame.draw.line(temp_surface, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+                
+            # Calcular tempo desde que a tela GG foi ativada
+            elapsed_time = time.time() - self.gg_screen_start_time
+            
+            # Fonte para o texto GG
+            try:
+                gg_font = pygame.font.SysFont("Arial Black", 200, bold=True)
+            except:
+                gg_font = pygame.font.Font(None, 240)
+                
+            # Renderizar "FIM!" com efeito pulsante
+            pulse_factor = 1.0 + 0.2 * math.sin(elapsed_time * 3.0)
+            
+            # Texto principal
+            gg_text = gg_font.render("FIM!", True, (255, 100, 255))
+            gg_text = pygame.transform.scale(gg_text, 
+                                            (int(gg_text.get_width() * pulse_factor), 
+                                            int(gg_text.get_height() * pulse_factor)))
+            gg_rect = gg_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
+            
+            # Sombra do texto
+            shadow_offset = 10
+            shadow_text = gg_font.render("FIM!", True, (40, 0, 40))
+            shadow_text = pygame.transform.scale(shadow_text, 
+                                                (int(shadow_text.get_width() * pulse_factor), 
+                                                int(shadow_text.get_height() * pulse_factor)))
+            shadow_rect = shadow_text.get_rect(center=(SCREEN_WIDTH//2 + shadow_offset, 
+                                                    SCREEN_HEIGHT//2 - 50 + shadow_offset))
+            
+            # Desenhar primeiro a sombra, depois o texto principal
+            temp_surface.blit(shadow_text, shadow_rect)
+            temp_surface.blit(gg_text, gg_rect)
+            
+            # Subtexto
+            try:
+                subtitle_font = pygame.font.SysFont("Arial", 40)
+            except:
+                subtitle_font = pygame.font.Font(None, 50)
+                
+            subtitle_text = subtitle_font.render("Você completou o jogo! Pressione ESC para sair", True, (200, 200, 200))
+            subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 150))
+            temp_surface.blit(subtitle_text, subtitle_rect)
         
         # Corrigir inversão vertical do texto
         temp_surface = pygame.transform.flip(temp_surface, False, True)
@@ -2755,6 +2777,77 @@ class Game:
         if self.instrument_sound_channel and self.instrument_sound_channel.get_busy():
             self.instrument_sound_channel.stop()
         self.instrument_sound_channel = None
+
+    def render_game_over_screen(self, surface):
+        """Renderiza a tela de fim de jogo com a imagem gg.png"""
+        try:
+            # Carregar e exibir a imagem de game over
+            print("Tentando carregar gg.png para a tela de Game Over")
+            # Tentar caminho absoluto e relativo
+            img_path = os.path.join(os.getcwd(), 'Images', 'gg.png')
+            print(f"Tentando caminho absoluto: {img_path}")
+            
+            if os.path.exists(img_path):
+                game_over_img = pygame.image.load(img_path)
+            else:
+                print("Caminho absoluto não encontrado, tentando caminho relativo")
+                game_over_img = pygame.image.load('Images/gg.png')
+                
+            # Redimensionar para preencher toda a tela
+            game_over_img = pygame.transform.scale(game_over_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            surface.blit(game_over_img, (0, 0))
+            print("gg.png carregado com sucesso na tela de Game Over")
+            
+            # Adicionar texto de instrução na parte inferior da tela
+            instruction_font = pygame.font.Font(None, 36)
+            
+            # Determinar o texto de instrução baseado no tempo
+            elapsed_time = time.time() - self.game_over_message_start_time
+            remaining_time = max(0, 10 - elapsed_time)
+            
+            if remaining_time > 0:
+                instruction_text = instruction_font.render(
+                    f"Voltando ao menu em {int(remaining_time)} segundos... (ESC para sair)", 
+                    True, (255, 255, 255)
+                )
+            else:
+                instruction_text = instruction_font.render("Voltando ao menu...", True, (255, 255, 255))
+                
+            instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))
+            surface.blit(instruction_text, instruction_rect)
+            
+        except pygame.error as e:
+            print(f"ERRO AO CARREGAR gg.png na tela de Game Over: {e}")
+            print(f"Caminho atual: {os.getcwd()}")
+            print(f"Conteúdo da pasta Images: {os.listdir('Images') if os.path.exists('Images') else 'Pasta não encontrada'}")
+            # Fallback para a exibição original de game over caso a imagem não possa ser carregada
+            try:
+                game_over_font = pygame.font.SysFont('arial', 100, bold=True)
+            except:
+                game_over_font = pygame.font.Font(None, 120)
+            
+            lost_text_surf = game_over_font.render("You Lost!", True, (255, 50, 50))
+            lost_text_rect = lost_text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            
+            # Simple black outline for better visibility
+            outline_color = (0,0,0)
+            positions = [(-2, -2), (2, -2), (-2, 2), (2, 2), (-2,0), (2,0), (0,-2), (0,2)]
+            for pos_off in positions:
+                outline_surf = game_over_font.render("You Lost!", True, outline_color)
+                outline_rect = outline_surf.get_rect(center=(lost_text_rect.centerx + pos_off[0], lost_text_rect.centery + pos_off[1]))
+                surface.blit(outline_surf, outline_rect)
+
+            surface.blit(lost_text_surf, lost_text_rect)
+
+            # Optional: Hint to press ESC or wait
+            hint_font = self.font # Reuse existing font
+            hint_text_content = "Returning to menu..."
+            if time.time() - self.game_over_message_start_time < 3.0: # If still within the 3s window for ESC
+                hint_text_content = "Press ESC or wait to return to menu"
+
+            hint_text = hint_font.render(hint_text_content, True, (200, 200, 200))
+            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
+            surface.blit(hint_text, hint_rect)
 
 def run_game():
     # Main game loop that handles transitions between menus and gameplay
